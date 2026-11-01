@@ -1,0 +1,5 @@
+.claude/
+.DS_Store
+.vercel
+*.mp3
+*.wav
