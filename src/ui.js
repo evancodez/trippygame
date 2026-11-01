@@ -1,5 +1,5 @@
-// Menus and HUD (plain DOM over the canvas). Menus are lists of items you can drive with the mouse,
-// the keyboard or a controller: up/down to move, left/right to change a slider, confirm to pick, back to leave.
+// Menus and HUD (plain DOM over the canvas). Menus are lists you can drive with the mouse, the
+// keyboard or a controller: up/down to move, left/right to change a slider, confirm to pick, back to leave.
 
 export function h(tag, props, ...kids) {
   const el = document.createElement(tag);
@@ -14,7 +14,8 @@ export function h(tag, props, ...kids) {
   return el;
 }
 
-export const fmtTime = s => `${Math.floor(s / 60)}:${(s % 60).toFixed(2).padStart(5, '0')}`;
+export const fmtTime = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+export const fmtScore = n => Math.round(n).toLocaleString('en-US');
 
 export class UI {
   constructor(root, sound) {
@@ -25,18 +26,20 @@ export class UI {
     this.onBack = null;
     this.menuEl = h('div', { class: 'menu-layer' });
     this.hud = h('div', { class: 'hud' });
-    this.hintEl = h('div', { class: 'hint' });
+    this.captionEl = h('div', { class: 'caption' });
     this.toastEl = h('div', { class: 'toast' });
-    root.append(this.hud, this.hintEl, this.menuEl, this.toastEl);
+    this.popsEl = h('div', { class: 'pops' });
+    root.append(this.hud, this.popsEl, this.captionEl, this.menuEl, this.toastEl);
   }
 
   // ------------------------------------------------------------------ menus
-  // items: { label, action } | { label, value, min, max, step, onChange } | { label, toggle, onChange } | { el } (custom card)
+  // items: { label, action, sub } | { label, value, min, max, step, onChange, format } | { label, toggle, onChange } | { card }
   show(screen) {
     this.items = [];
     this.focus = 0;
     this.onBack = screen.back || null;
     const list = h('div', { class: `menu ${screen.class || ''}` });
+    if (screen.top) list.append(screen.top);
     if (screen.title) list.append(h('div', { class: 'menu-title', html: screen.title }));
     if (screen.subtitle) list.append(h('div', { class: 'menu-sub', html: screen.subtitle }));
     if (screen.body) list.append(screen.body);
@@ -46,29 +49,29 @@ export class UI {
       if (it.card) {
         el = it.card;
         el.classList.add('menu-item');
-        el.addEventListener('click', () => { this.focus = i; this.activate(); });
+        el.addEventListener('click', () => { if (!it.disabled) { this.focus = i; this.activate(); } });
       } else if (it.min != null) {
         const out = h('span', { class: 'val' });
         const bar = h('i');
         const paint = () => { out.textContent = it.format ? it.format(it.value) : Math.round(it.value * 100) + '%'; bar.style.width = `${((it.value - it.min) / (it.max - it.min)) * 100}%`; };
-        el = h('button', { class: 'menu-item slider-item' }, h('span', {}, it.label), h('span', { class: 'track' }, bar), out);
+        el = h('button', { class: 'menu-item slider-item' }, h('span', { class: 'lbl' }, it.label), h('span', { class: 'track' }, bar), out);
         el.addEventListener('click', e => {
           const r = el.querySelector('.track').getBoundingClientRect();
-          if (e.clientX >= r.left && e.clientX <= r.right) { it.value = it.min + (it.max - it.min) * (e.clientX - r.left) / r.width; it.onChange(it.value); paint(); }
+          if (e.clientX >= r.left - 4 && e.clientX <= r.right + 4) { it.value = Math.min(it.max, Math.max(it.min, it.min + (it.max - it.min) * (e.clientX - r.left) / r.width)); it.onChange(it.value); paint(); }
         });
         it.adjust = d => { it.value = Math.min(it.max, Math.max(it.min, it.value + d * (it.step || 0.1))); it.onChange(it.value); paint(); };
         paint();
       } else if (it.toggle != null) {
-        el = h('button', { class: 'menu-item toggle-item' }, h('span', {}, it.label), h('span', { class: 'val' }));
-        const paint = () => { el.querySelector('.val').textContent = it.toggle ? 'On' : 'Off'; };
+        el = h('button', { class: 'menu-item toggle-item' }, h('span', { class: 'lbl' }, it.label), h('span', { class: 'val' }));
+        const paint = () => { el.querySelector('.val').textContent = it.toggle ? 'on' : 'off'; el.classList.toggle('on', !!it.toggle); };
         it.flip = () => { it.toggle = !it.toggle; it.onChange(it.toggle); paint(); };
-        el.addEventListener('click', () => it.flip());
+        el.addEventListener('click', () => { this.focus = i; it.flip(); });
         paint();
       } else {
-        el = h('button', { class: `menu-item ${it.class || ''}`, disabled: it.disabled }, it.label);
+        el = h('button', { class: `menu-item ${it.class || ''}`, disabled: it.disabled }, h('span', { class: 'lbl' }, it.label), it.sub ? h('small', {}, it.sub) : null);
         el.addEventListener('click', () => { if (!it.disabled) { this.focus = i; this.activate(); } });
       }
-      el.addEventListener('pointerenter', () => { if (!it.disabled) { this.focus = i; this.paintFocus(); } });
+      el.addEventListener('pointerenter', () => { if (!it.disabled && this.focus !== i) { this.focus = i; this.paintFocus(); } });
       it.el = el;
       this.items.push(it);
       wrap.append(el);
@@ -78,7 +81,7 @@ export class UI {
     this.menuEl.replaceChildren(list);
     this.menuEl.classList.add('open');
     this.focus = Math.max(0, screen.focus ?? this.items.findIndex(it => !it.disabled));
-    this.grid = screen.grid ? screen.grid : 0;
+    this.grid = screen.grid || 0;
     this.paintFocus();
   }
 
@@ -108,7 +111,6 @@ export class UI {
     it.action?.();
   }
 
-  // drive the open menu from the unified input
   drive(inp) {
     if (!this.items.length) return;
     const g = this.grid;
@@ -117,25 +119,32 @@ export class UI {
     const it = this.items[this.focus];
     if (inp.leftPressed) { if (it?.adjust) it.adjust(-1); else if (g) this.move(-1); }
     if (inp.rightPressed) { if (it?.adjust) it.adjust(1); else if (g) this.move(1); }
-    if (inp.confirmPressed || inp.jumpPressed) this.activate();
-    else if ((inp.backPressed || (inp.pausePressed && this.onBack)) && this.onBack) { this.sound.sfx('ui'); this.onBack(); }
+    if (inp.confirmPressed || (inp.device === 'pad' && inp.divePressed)) this.activate();
+    else if ((inp.backPressed || inp.pausePressed) && this.onBack) { this.sound.sfx('ui'); this.onBack(); }
   }
 
-  // ------------------------------------------------------------------ HUD + hints + toasts
-  setHud(html) { this.hud.innerHTML = html; this.hud.classList.toggle('show', !!html); }
+  // ------------------------------------------------------------------ HUD, captions, toasts, trick pops
+  setHud(html) { if (html !== this.hudHtml) { this.hudHtml = html; this.hud.innerHTML = html; } this.hud.classList.toggle('show', !!html); }
 
-  hint(text) {
-    clearTimeout(this.hintTimer);
-    if (!text) { this.hintEl.classList.remove('show'); return; }
-    this.hintEl.innerHTML = text;
-    this.hintEl.classList.add('show');
-    this.hintTimer = setTimeout(() => this.hintEl.classList.remove('show'), 6500);
+  caption(text, ms = 7000) {
+    clearTimeout(this.capTimer);
+    if (!text) { this.captionEl.classList.remove('show'); return; }
+    this.captionEl.innerHTML = text;
+    this.captionEl.classList.add('show');
+    this.capTimer = setTimeout(() => this.captionEl.classList.remove('show'), ms);
   }
 
-  toast(text) {
+  toast(text, ms = 2600) {
     clearTimeout(this.toastTimer);
     this.toastEl.innerHTML = text;
     this.toastEl.classList.add('show');
-    this.toastTimer = setTimeout(() => this.toastEl.classList.remove('show'), 2400);
+    this.toastTimer = setTimeout(() => this.toastEl.classList.remove('show'), ms);
+  }
+
+  pop(text, kind = '') {
+    const el = h('div', { class: `pop ${kind}`, html: text });
+    this.popsEl.append(el);
+    while (this.popsEl.children.length > 4) this.popsEl.firstChild.remove();
+    setTimeout(() => el.remove(), 1500);
   }
 }
