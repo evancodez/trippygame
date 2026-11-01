@@ -14,7 +14,7 @@
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
 body { font: 14px/1.45 var(--font); color: var(--text); user-select: none; -webkit-user-select: none; -webkit-font-smoothing: antialiased; }
-#sea { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; display: block; touch-action: none; cursor: crosshair; }
+#sheet { position: fixed; inset: 0; width: 100vw; height: 100vh; height: 100dvh; display: block; touch-action: none; cursor: crosshair; }
 #overlay { position: fixed; inset: 0; pointer-events: none; }
 #overlay > * { pointer-events: none; }
 .fatal { position: fixed; inset: 0; display: grid; place-items: center; background: #000; color: var(--text); font-size: 18px; padding: 24px; text-align: center; }
@@ -68,7 +68,7 @@ b { font-weight: 600; }
 /* title */
 .menu.title { width: min(480px, 100%); }
 .logo {
-  font-size: clamp(52px, 10vw, 92px); font-weight: 700; letter-spacing: -0.05em; line-height: 0.86; text-transform: lowercase;
+  font-size: clamp(40px, 7.4vw, 70px); font-weight: 700; letter-spacing: -0.05em; line-height: 0.95; text-transform: lowercase; white-space: nowrap;
   color: transparent;
   background: repeating-linear-gradient(180deg, var(--text) 0 3px, transparent 3px 6.5px);
   background-size: 100% 13px;
@@ -142,6 +142,13 @@ b { font-weight: 600; }
 .speed { font: 600 20px/1 var(--mono); }
 .speed small { font-size: 12px; color: var(--faint); }
 .hud-b { position: absolute; left: 50%; bottom: 18px; width: min(460px, 70vw); transform: translateX(-50%); display: flex; flex-direction: column; gap: 7px; }
+.phrase { height: 3px; border-radius: 3px; background: rgba(0, 0, 0, 0.35); overflow: hidden; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18); }
+.phrase i { display: block; height: 100%; background: var(--text); transform-origin: 0 50%; transition: transform 0.12s linear; }
+.goal { font-size: 13px; margin-top: 2px; }
+.scene { font: 11px var(--mono); color: var(--faint); margin-left: 6px; }
+.lights { position: absolute; top: 22px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; }
+.lights i { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid rgba(255, 255, 255, 0.55); background: rgba(0, 0, 0, 0.3); box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.25); }
+.lights i.on { background: #fff; box-shadow: 0 0 12px rgba(255, 255, 255, 0.8); }
 .lucid { height: 4px; border-radius: 4px; background: rgba(0, 0, 0, 0.35); overflow: hidden; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18); }
 .lucid i { display: block; height: 100%; background: var(--text); transform-origin: 50% 50%; transition: transform 0.12s linear; }
 .lucid.low i { background: var(--cherry); animation: blink 0.5s steps(2) infinite; }
@@ -184,7 +191,7 @@ b { font-weight: 600; }
 @keyframes pop { 0% { opacity: 0; transform: translateY(10px) scale(0.9); } 15% { opacity: 1; transform: none; } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-34px); } }
 
 body.bare .hud, body.bare .caption, body.bare .pops, body.bare .toast { display: none; }
-body.bare #sea { cursor: none; }
+body.bare #sheet { cursor: none; }
 
 .drop { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0, 0, 0, 0.6); opacity: 0; pointer-events: none; transition: opacity 0.2s; z-index: 5; }
 .drop div { font-size: 22px; padding: 24px 32px; border: 1px dashed var(--line-2); border-radius: 22px; background: var(--glass-strong); }

@@ -1,8 +1,8 @@
 // All sound is made live with the Web Audio API — no files.
 //   · sfx(name, opts) for things that happen on the sea
-//   · wind that rises with your speed
+//   · a hum that swells while your hand pushes
 //   · a generative 6/8 soundtrack (organ chords, a warbly slide lead, a drum machine) — or your own
-//     song, dropped in. Either way `bars` is the clock the sea is timed to.
+//     song, dropped in. Either way `bars` is the clock the sheet is timed to.
 
 const SCALE = [0, 2, 4, 7, 9, 12, 14, 16, 19, 21, 24];   // pentatonic, for orb chimes
 const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
@@ -132,35 +132,58 @@ export class Sound {
     if (!this.ctx) return;
     const chord = SONGS[Math.max(0, this.song) % SONGS.length][0];
     switch (name) {
-      case 'orb': {
+      case 'mote': {
         const now = this.ctx.currentTime;
-        this.orbStreak = now - this.lastOrb < 1.2 ? Math.min(SCALE.length - 1, this.orbStreak + 1) : 0;
+        this.orbStreak = now - this.lastOrb < 2 ? Math.min(SCALE.length - 1, this.orbStreak + 1) : 0;
         this.lastOrb = now;
         const m = chord[0] + 12 + SCALE[this.orbStreak];
-        this.tone({ f0: mtof(m), dur: 0.35, vol: 0.12, sendVerb: 0.5 });
-        this.tone({ f0: mtof(m + 12), dur: 0.2, vol: 0.04 });
+        this.tone({ f0: mtof(m), dur: 0.45, vol: 0.12, sendVerb: 0.6 });
+        this.tone({ f0: mtof(m + 12), dur: 0.25, vol: 0.04 });
         break;
       }
-      case 'ring': chord.forEach((m, i) => this.tone({ type: 'triangle', f0: mtof(m + 12), t: i * 0.05, dur: 0.8, vol: 0.09, sendVerb: 0.7 })); this.noise({ dur: 0.4, vol: 0.12, f0: 800, f1: 5000, q: 1.2 }); break;
-      case 'smooth': this.tone({ type: 'triangle', f0: mtof(chord[2] + 12), dur: 0.5, vol: 0.1, sendVerb: 0.6 }); this.tone({ type: 'triangle', f0: mtof(chord[3] + 12), t: 0.08, dur: 0.6, vol: 0.08, sendVerb: 0.6 }); break;
-      case 'land': this.tone({ f0: 120, f1: 50, dur: 0.14, vol: Math.min(0.3, 0.06 + (o.impact || 0) / 60) }); break;
-      case 'rough': this.tone({ f0: 150, f1: 40, dur: 0.25, vol: 0.32 }); this.noise({ dur: 0.18, vol: 0.18, type: 'lowpass', f0: 700 }); break;
-      case 'air': this.tone({ type: 'sine', f0: mtof(chord[0] + 24), f1: mtof(chord[0] + 31), dur: 0.5, vol: 0.05, sendVerb: 0.8 }); break;
-      case 'flip': this.tone({ type: 'sine', f0: 900, f1: 160, dur: 0.32, vol: 0.16 }); this.tone({ type: 'sine', f0: 160, f1: 900, dur: 0.32, vol: 0.12 }); this.noise({ dur: 0.45, vol: 0.12, f0: 4000, f1: 400 }); break;
-      case 'pop': this.tone({ type: 'triangle', f0: 220, f1: 1300, dur: 0.3, vol: 0.18, sendVerb: 0.4 }); this.noise({ dur: 0.15, vol: 0.2, f0: 2500, q: 0.8 }); break;
-      case 'bonk': this.tone({ type: 'square', f0: 140, f1: 70, dur: 0.18, vol: 0.12, filter: 900 }); this.noise({ dur: 0.1, vol: 0.2, f0: 1500, q: 2 }); break;
-      case 'through': this.noise({ dur: 1.4, vol: 0.25, type: 'bandpass', f0: 300, f1: 6000, q: 0.6 }); chord.forEach((m, i) => this.tone({ type: 'sine', f0: mtof(m), t: i * 0.04, dur: 2.4, vol: 0.07, sendVerb: 1 })); break;
-      case 'hand': this.tone({ type: 'sawtooth', f0: 55, f1: 110, dur: 2.5, vol: 0.06, filter: 400, attack: 0.8 }); break;
-      case 'fade': this.noise({ dur: 1.0, vol: 0.18, type: 'highpass', f0: 2000, f1: 6000 }); break;
-      case 'woke': this.noise({ dur: 2.2, vol: 0.35, type: 'highpass', f0: 600, f1: 4000 }); this.tone({ f0: 300, f1: 40, dur: 1.5, vol: 0.15 }); break;
-      case 'clear': [0, 7, 12, 16, 19, 24].forEach((d, i) => this.tone({ type: 'triangle', f0: mtof(chord[0] + d), t: i * 0.11, dur: 2.2, vol: 0.09, sendVerb: 0.9 })); break;
+      // the sheet is a drum: how hard something lands is how hard it's hit
+      case 'land': { const v = Math.min(1, (o.speed || 0) / 14); this.tone({ f0: 90 + v * 40, f1: 42, dur: 0.3, vol: 0.08 + v * 0.3 }); this.noise({ dur: 0.08, vol: 0.04 + v * 0.1, type: 'lowpass', f0: 600 }); break; }
+      case 'clack': this.tone({ type: 'triangle', f0: 1400, f1: 900, dur: 0.06, vol: Math.min(0.15, 0.03 + (o.speed || 0) / 80) }); break;
+      case 'push': this.noise({ dur: 0.25, vol: 0.06, type: 'lowpass', f0: 300, f1: 900 }); break;
+      case 'snap': this.tone({ f0: 160, f1: 50, dur: 0.25, vol: 0.32 }); this.noise({ dur: 0.12, vol: 0.14, f0: 3000, q: 1 }); this.tone({ type: 'triangle', f0: mtof(chord[0] + 24 + SCALE[Math.min(SCALE.length - 1, (o.streak || 1) - 1)]), dur: 0.35, vol: 0.07, sendVerb: 0.5 }); break;
+      case 'air': this.tone({ type: 'sine', f0: mtof(chord[0] + 24), f1: mtof(chord[0] + 31), dur: 0.6, vol: 0.05, sendVerb: 0.8 }); break;
+      case 'drop': this.noise({ dur: 0.7, vol: 0.12, type: 'bandpass', f0: 2000, f1: 200, q: 2 }); break;
+      case 'eye': chord.forEach((m, i) => this.tone({ type: 'triangle', f0: mtof(m + 12), t: i * 0.06, dur: 1.6, vol: 0.09, sendVerb: 0.9 })); this.tone({ f0: 70, f1: 40, dur: 0.8, vol: 0.3 }); break;
+      case 'fed': this.tone({ type: 'square', f0: 220, f1: 55, dur: 0.5, vol: 0.06, filter: 900 }); chord.slice(0, 2).forEach((m, i) => this.tone({ type: 'triangle', f0: mtof(m + 12), t: 0.1 + i * 0.08, dur: 0.8, vol: 0.07, sendVerb: 0.8 })); break;
+      case 'clear': [0, 7, 12, 16, 19, 24].forEach((d, i) => this.tone({ type: 'triangle', f0: mtof(chord[0] + d), t: i * 0.09, dur: 2, vol: 0.08, sendVerb: 0.9 })); break;
+      case 'miss': this.tone({ type: 'sawtooth', f0: 220, f1: 110, dur: 0.9, vol: 0.06, filter: 700 }); this.noise({ dur: 0.8, vol: 0.12, type: 'highpass', f0: 1500, f1: 5000 }); break;
+      case 'lost': this.noise({ dur: 0.9, vol: 0.16, type: 'bandpass', f0: 1200, f1: 120, q: 1.5 }); this.tone({ f0: 300, f1: 70, dur: 0.6, vol: 0.12 }); break;
+      case 'arrive': this.tone({ type: 'sine', f0: mtof(chord[3] + 24), f1: mtof(chord[0] + 12), dur: 0.5, vol: 0.05, sendVerb: 0.7 }); break;
+      case 'inkup': this.noise({ dur: 0.4, vol: 0.08, type: 'lowpass', f0: 200, f1: 800 }); break;
+      case 'rival': this.tone({ type: 'sawtooth', f0: 70, f1: 90, dur: 0.6, vol: 0.06, filter: 300 }); break;
+      case 'found': chord.forEach((m, i) => this.tone({ type: 'sine', f0: mtof(m + 24), t: i * 0.05, dur: 1.2, vol: 0.05, sendVerb: 1 })); break;
+      case 'woke': this.noise({ dur: 2.2, vol: 0.3, type: 'highpass', f0: 600, f1: 4000 }); this.tone({ f0: 300, f1: 40, dur: 1.5, vol: 0.14 }); break;
+      case 'end': [0, 4, 7, 12, 16, 19, 24].forEach((d, i) => this.tone({ type: 'triangle', f0: mtof(chord[0] + d), t: i * 0.12, dur: 3, vol: 0.08, sendVerb: 1 })); break;
       case 'ui': this.tone({ type: 'triangle', f0: 660, dur: 0.05, vol: 0.06 }); break;
       case 'uiok': this.tone({ type: 'triangle', f0: 880, f1: 1320, dur: 0.1, vol: 0.08 }); break;
       default:
     }
   }
 
-  // ------------------------------------------------------------------ the clock the sea is timed to
+  // the hand's hum: pushing swells an organ chord, pressing a low drone
+  hum(push, press) {
+    if (!this.ctx) return;
+    const ctx = this.ctx, now = ctx.currentTime;
+    if (!this.humNodes) {
+      const g = ctx.createGain(); g.gain.value = 0;
+      const f = ctx.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 500; f.Q.value = 2;
+      const oscs = [0, 7, 12].map(d => { const o = ctx.createOscillator(); o.type = 'sawtooth'; o.detune.value = d * 100; o.connect(f); o.start(); return o; });
+      f.connect(g); g.connect(this.sfxBus); g.connect(this.verb);
+      this.humNodes = { g, f, oscs };
+    }
+    const chord = SONGS[Math.max(0, this.song) % SONGS.length][0];
+    const H = this.humNodes, root = mtof(chord[0] - (press > push ? 24 : 12));
+    H.oscs.forEach(o => o.frequency.setTargetAtTime(root, now, 0.05));
+    H.g.gain.setTargetAtTime(Math.max(push, press) * 0.035, now, 0.06);
+    H.f.frequency.setTargetAtTime(300 + 1800 * push + 200 * press, now, 0.08);
+  }
+
+  // ------------------------------------------------------------------ the clock the sheet is timed to
   get bars() {
     if (!this.running) return this.fallback / BAR;
     if (this.track) return Math.max(0, (this.ctx.currentTime - this.track.t0 - this.track.an.beatOffset) / this.track.barLen);
